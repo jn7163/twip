@@ -49,6 +49,34 @@ class twip{
         return preg_replace('/id":"(\d+)"/', 'id":\1', $in);
     }
 
+    public function status2rss($status){
+        if(is_string($status)){
+            $statuses = $this->json_x86_decode($status);
+        }
+        $now = date("D, d M Y H:i:s T");
+        $output = "<?xml version=\"1.0\"?>
+            <rss version=\"2.0\">
+            <channel>
+            <title>RSS for Twitter</title>
+            <link><![CDATA[".$this->request_uri."]]></link>
+            <description><![CDATA[".$this->request_uri."]]></description>
+            <pubDate>$now</pubDate>
+            <lastBuildDate>$now</lastBuildDate>
+            ";
+        foreach ($statuses as $line){
+            $output .= "<item><title><![CDATA[".$line->user->screen_name.": ".$line->text."]]></title>
+                <link><![CDATA["."https://twitter.com/".$line->user->screen_name."/statuses/".$line->id_str."]]></link>
+                <guid><![CDATA["."https://twitter.com/".$line->user->screen_name."/statuses/".$line->id_str."]]></guid>
+                <pubDate>".date("r", strtotime($line->created_at))."</pubDate>
+                <description><![CDATA[".strip_tags($line->text)."]]></description>
+                <author><![CDATA[".$line->user->screen_name."]]></author>
+                <twitter:source><![CDATA[".$line->source."]]></twitter:source>
+                </item>";
+        }
+        $output .= "\n</channel></rss>";
+        return $output;
+    }
+
     public function parse_entities($status, $type){
         if($type == 'json'){
             $j = is_string($status) ? $this->json_x86_decode($status) : $status;
@@ -69,7 +97,11 @@ class twip{
                     $this->replace_tco_json($j->status->retweeted_status);
                 }
             }
-            return is_string($status) ? $this->json_x86_encode($j) : $j;
+            if($this->rss){
+                $status = $this->status2rss($status);
+            } else {
+                return is_string($status) ? $this->json_x86_encode($j) : $j;
+            }
         }
         return $status;
     }
@@ -174,6 +206,12 @@ class twip{
             return;
         }
         $this->parameters = $this->get_parameters();
+        if(preg_match('/^[^?]+\.rss/', $this->request_uri)){
+            $this->rss = true;
+            $this->request_uri = preg_replace('/(^[^?]+)\.rss/', '\1.json', $this->request_uri);
+        } else {
+            $this->rss = false;
+        }
         $this->uri_fixer();
         $this->connection = new TwitterOAuth($this->oauth_key, $this->oauth_secret, $this->access_token['oauth_token'], $this->access_token['oauth_token_secret']);
 
@@ -266,10 +304,13 @@ class twip{
             'pc=true' => 'pc=false', //change pc=true to pc=false
             '&earned=true' => '', //remove "&earned=true"
             '/1.1/mentions.json' => '/1.1/mentions_timeline.json', //backward compat for API 1.0
+            '/1.1/statuses/mentions.json' => '/1.1/statuses/mentions_timeline.json', //backward compat for API 1.0
             'i/search.json' => 'search.json', //fix search issue on twitter for iPhone
         );
 
         $api = str_replace(array_keys($replacement), array_values($replacement), $api);
+
+        $api = preg_replace('/user_timeline\/(.*)\.json/', 'user_timeline.json?screen_name=\1', $api);
 
 
         if((strpos($api,'search.') === 0)){

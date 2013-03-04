@@ -219,6 +219,8 @@ class TwitterOAuth {
         if (!empty($postfields)) {
           $url = "{$url}?{$postfields}";
         }
+      case 'GET':
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array('X-PHX: true'));
     }
 
     curl_setopt($ci, CURLOPT_URL, $url);
