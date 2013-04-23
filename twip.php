@@ -57,7 +57,7 @@ class twip{
         $output = "<?xml version=\"1.0\"?>
             <rss version=\"2.0\">
             <channel>
-            <title>RSS for Twitter</title>
+            <title><![CDATA[".$this->title."]]></title>
             <link><![CDATA[".$this->request_uri."]]></link>
             <description><![CDATA[".$this->request_uri."]]></description>
             <pubDate>$now</pubDate>
@@ -234,6 +234,16 @@ class twip{
             $this->request_uri = str_replace("api.twitter.com", "upload.twitter.com", $this->request_uri);
         }
 
+        $this->title = 'RSS For Twitter';
+        $parsed = parse_url($this->request_uri);
+        if (array_key_exists('query', $parsed)) {
+            parse_str($parsed['query'], $params);
+            if (array_key_exists('screen_name', $params)) {
+                $screen_name = $params['screen_name'];
+                $this->title = $screen_name.' in Twitter';
+            }
+        }
+
         switch($this->method){
             case 'POST':
                 echo $this->parse_entities($this->connection->post($this->request_uri,$this->parameters), $type);
@@ -310,7 +320,7 @@ class twip{
 
         $api = str_replace(array_keys($replacement), array_values($replacement), $api);
 
-        $api = preg_replace('/user_timeline\/(.*)\.json/', 'user_timeline.json?screen_name=\1', $api);
+        $api = preg_replace('/user_timeline\/(.*)\.json/', 'user_timeline.json?screen_name=\1&count=200', $api);
 
 
         if((strpos($api,'search.') === 0)){
