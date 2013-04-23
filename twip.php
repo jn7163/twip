@@ -53,12 +53,14 @@ class twip{
         if(is_string($status)){
             $statuses = $this->json_x86_decode($status);
         }
+        $title = ($this->screen_name) ? ($this->screen_name.' in Twitter') : 'RSS for Twitter';
+        $link = ($this->screen_name) ? ('https://twitter.com/' . $this->screen_name) : $this->request_uri;
         $now = date("D, d M Y H:i:s T");
         $output = "<?xml version=\"1.0\"?>
             <rss version=\"2.0\">
             <channel>
-            <title><![CDATA[".$this->title."]]></title>
-            <link><![CDATA[".$this->request_uri."]]></link>
+            <title><![CDATA[".$title."]]></title>
+            <link><![CDATA[".$link."]]></link>
             <description><![CDATA[".$this->request_uri."]]></description>
             <pubDate>$now</pubDate>
             <lastBuildDate>$now</lastBuildDate>
@@ -234,13 +236,12 @@ class twip{
             $this->request_uri = str_replace("api.twitter.com", "upload.twitter.com", $this->request_uri);
         }
 
-        $this->title = 'RSS For Twitter';
+        $this->screen_name = '';
         $parsed = parse_url($this->request_uri);
         if (array_key_exists('query', $parsed)) {
             parse_str($parsed['query'], $params);
             if (array_key_exists('screen_name', $params)) {
-                $screen_name = $params['screen_name'];
-                $this->title = $screen_name.' in Twitter';
+                $this->screen_name = $params['screen_name'];
             }
         }
 
